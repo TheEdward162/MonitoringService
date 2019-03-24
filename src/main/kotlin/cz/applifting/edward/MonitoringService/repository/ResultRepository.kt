@@ -6,9 +6,9 @@ import org.springframework.data.jpa.repository.Modifying
 
 import org.springframework.transaction.annotation.Transactional
 
-public interface ResultRepository : CrudRepository<MonitoringResult, Long> {
+public interface ResultRepository : CrudRepository<MonitoringResult, Int> {
 	fun findAllByEndpoint(endpoint: MonitoredEndpoint): Iterable<MonitoringResult>
-	fun findTop10ByEndpointOrderByCheckTime(endpoint: MonitoredEndpoint): Iterable<MonitoringResult>
+	fun findTop10ByEndpointOrderByCheckTimeDesc(endpoint: MonitoredEndpoint): Iterable<MonitoringResult>
 
 	@Transactional
 	@Modifying

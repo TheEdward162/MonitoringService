@@ -9,6 +9,9 @@ import org.springframework.web.bind.annotation.RestController
 
 import org.springframework.beans.factory.annotation.Autowired
 
+import org.springframework.context.ApplicationEventPublisher
+import org.springframework.transaction.annotation.Transactional
+
 import java.time.LocalDateTime
 
 @RestController
@@ -16,7 +19,9 @@ import java.time.LocalDateTime
 class RestController(
 	@Autowired private val userRepository: UserRepository,
 	@Autowired private val endpointRepository: EndpointRepository,
-	@Autowired private val resultRepository: ResultRepository
+	@Autowired private val resultRepository: ResultRepository,
+
+	@Autowired private val eventPublisher: ApplicationEventPublisher
 ) {
 	/// Extracts token from HTTP header value in format `Authorization: Bearer token`.
 	///
@@ -47,7 +52,7 @@ class RestController(
 		return user
 	}
 
-	@RequestMapping("", method=[RequestMethod.GET])
+	@RequestMapping("", method = [ RequestMethod.GET ])
 	fun listEndpoints(
 		@RequestHeader("Authorization") authHeaderValue: String?
 	): List<MonitoredEndpoint> {
@@ -55,7 +60,7 @@ class RestController(
 		return this.endpointRepository.findByUser(user).toList()
 	}
 
-	@RequestMapping("/{name}", method=[RequestMethod.GET])
+	@RequestMapping("/{name}", method = [ RequestMethod.GET ])
 	fun getEndpoint(
 		@RequestHeader("Authorization") authHeaderValue: String?, @PathVariable name: String
 	): MonitoredEndpoint {
@@ -67,61 +72,70 @@ class RestController(
 		return endpoint
 	}
 
-	@RequestMapping("/{name}", method=[RequestMethod.POST])
+	@Transactional
+	@RequestMapping("/{name}", method = [ RequestMethod.POST ])
 	fun updateEndpoint(
 		@RequestHeader("Authorization") authHeaderValue: String?, @PathVariable name: String,
-		@RequestParam("url") url: String?, @RequestParam("interval") interval: Int? 
+		@RequestParam("url") url: String?, @RequestParam("interval") interval: Long? 
 	): Status {
 		val user = this.getUserByToken(authHeaderValue)
 		val endpoint = this.endpointRepository.findEndpointByNameAndUser(name, user)
 
-		if (endpoint == null && (url == null || interval == null))
+		if (endpoint == null && (url == null || interval == null || interval < 1))
 			throw InvalidParamsException()
-		if (endpoint != null && (url == null && interval == null))
+		if (endpoint != null && (url == null && (interval == null || interval < 1)))
 			throw InvalidParamsException()
 		
 		if (endpoint == null) {
-			this.endpointRepository.save(MonitoredEndpoint(
+			val newEndpoint = this.endpointRepository.save(MonitoredEndpoint(
 				name,
 				url!!, // already checked above
 				interval!!, // already checked above
 				user
 			))
+			this.eventPublisher.publishEvent(EndpointChangedEvent(newEndpoint.id))
 		} else {
 			this.endpointRepository.save(endpoint.copy(
 				url = url ?: endpoint.url,
 				monitoredInterval = interval ?: endpoint.monitoredInterval
 			))
+			this.eventPublisher.publishEvent(EndpointChangedEvent(endpoint.id))
 		}
 
 		return Status.OK
 	}
 
-	@RequestMapping("/{name}", method=[RequestMethod.DELETE])
+	@Transactional
+	@RequestMapping("/{name}", method = [ RequestMethod.DELETE ])
 	fun deleteEndpoint(
 		@RequestHeader("Authorization") authHeaderValue: String?, @PathVariable name: String
 	): Status {
 		val user = this.getUserByToken(authHeaderValue)
-		this.endpointRepository.deleteEndpointByNameAndUser(name, user)
-		
+		val endpoint = this.endpointRepository.findEndpointByNameAndUser(name, user)
+		if (endpoint == null)
+			throw EndpointNotFoundException()
+
+		this.endpointRepository.delete(endpoint)
+		this.eventPublisher.publishEvent(EndpointChangedEvent(endpoint.id))
+
 		return Status.OK
 	}
 
-	@RequestMapping("/{name}/results", method=[RequestMethod.GET])
+	@RequestMapping("/{name}/results", method = [ RequestMethod.GET ])
 	fun listResults(
 		@RequestHeader("Authorization") authHeaderValue: String?, @PathVariable name: String
 	): List<MonitoringResult> {
 		val endpoint = this.getEndpoint(authHeaderValue, name)
-		return this.resultRepository.findTop10ByEndpointOrderByCheckTime(endpoint).toList()
+		return this.resultRepository.findTop10ByEndpointOrderByCheckTimeDesc(endpoint).toList()
 	}
 
-	@RequestMapping("/{name}/results/{offset}", method=[RequestMethod.GET])
+	@RequestMapping("/{name}/results/{offset}", method = [ RequestMethod.GET ])
 	fun getResult(
 		@RequestHeader("Authorization") authHeaderValue: String?, @PathVariable name: String,
 		@PathVariable offset: Int
 	): MonitoringResult {
 		val endpoint = this.getEndpoint(authHeaderValue, name)
-		val result = this.resultRepository.findTop10ByEndpointOrderByCheckTime(endpoint).elementAtOrNull(offset)
+		val result = this.resultRepository.findTop10ByEndpointOrderByCheckTimeDesc(endpoint).elementAtOrNull(offset)
 		if (result == null)
 			throw ResultNotFoundException()
 		

@@ -73,7 +73,7 @@ class EndpointTests(
 			&&
 			node.get("url").asText().equals(this.endpoint.url)
 			&&
-			node.get("monitoredInterval").asText().equals(this.endpoint.monitoredInterval)
+			node.get("monitoredInterval").asLong().equals(this.endpoint.monitoredInterval)
 		})
 	}
 

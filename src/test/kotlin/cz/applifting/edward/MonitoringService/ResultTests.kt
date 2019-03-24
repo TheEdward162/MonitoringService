@@ -49,7 +49,7 @@ class ResultTests(
 			this.resultRepository.save(result)
 		}
 
-		val topTen = this.resultRepository.findTop10ByEndpointOrderByCheckTime(this.endpoint)
+		val topTen = this.resultRepository.findTop10ByEndpointOrderByCheckTimeDesc(this.endpoint)
 		assertThat(topTen).hasSize(10)
 
 		this.resultRepository.deleteByEndpointNotIn(this.endpoint, topTen)
