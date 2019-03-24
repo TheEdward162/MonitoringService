@@ -7,17 +7,16 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
-import org.springframework.transaction.annotation.Transactional
-
 import org.springframework.beans.factory.annotation.Autowired
 
 import java.time.LocalDateTime
 
 @RestController
 @RequestMapping("/endpoint")
-class EndpointController(
+class RestController(
 	@Autowired private val userRepository: UserRepository,
-	@Autowired private val endpointRepository: EndpointRepository
+	@Autowired private val endpointRepository: EndpointRepository,
+	@Autowired private val resultRepository: ResultRepository
 ) {
 	/// Extracts token from HTTP header value in format `Authorization: Bearer token`.
 	///
@@ -59,7 +58,7 @@ class EndpointController(
 	@RequestMapping("/{name}", method=[RequestMethod.GET])
 	fun getEndpoint(
 		@RequestHeader("Authorization") authHeaderValue: String?, @PathVariable name: String
-	): MonitoredEndpoint? {
+	): MonitoredEndpoint {
 		val user = this.getUserByToken(authHeaderValue)
 		val endpoint = this.endpointRepository.findEndpointByNameAndUser(name, user)
 		if (endpoint == null)
@@ -68,7 +67,6 @@ class EndpointController(
 		return endpoint
 	}
 
-	@Transactional
 	@RequestMapping("/{name}", method=[RequestMethod.POST])
 	fun updateEndpoint(
 		@RequestHeader("Authorization") authHeaderValue: String?, @PathVariable name: String,
@@ -99,7 +97,6 @@ class EndpointController(
 		return Status.OK
 	}
 
-	@Transactional
 	@RequestMapping("/{name}", method=[RequestMethod.DELETE])
 	fun deleteEndpoint(
 		@RequestHeader("Authorization") authHeaderValue: String?, @PathVariable name: String
@@ -108,5 +105,26 @@ class EndpointController(
 		this.endpointRepository.deleteEndpointByNameAndUser(name, user)
 		
 		return Status.OK
+	}
+
+	@RequestMapping("/{name}/results", method=[RequestMethod.GET])
+	fun listResults(
+		@RequestHeader("Authorization") authHeaderValue: String?, @PathVariable name: String
+	): List<MonitoringResult> {
+		val endpoint = this.getEndpoint(authHeaderValue, name)
+		return this.resultRepository.findTop10ByEndpointOrderByCheckTime(endpoint).toList()
+	}
+
+	@RequestMapping("/{name}/results/{offset}", method=[RequestMethod.GET])
+	fun getResult(
+		@RequestHeader("Authorization") authHeaderValue: String?, @PathVariable name: String,
+		@PathVariable offset: Int
+	): MonitoringResult {
+		val endpoint = this.getEndpoint(authHeaderValue, name)
+		val result = this.resultRepository.findTop10ByEndpointOrderByCheckTime(endpoint).elementAtOrNull(offset)
+		if (result == null)
+			throw ResultNotFoundException()
+		
+		return result
 	}
 }
