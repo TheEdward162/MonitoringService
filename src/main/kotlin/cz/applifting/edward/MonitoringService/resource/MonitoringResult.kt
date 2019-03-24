@@ -6,6 +6,8 @@ import javax.persistence.GenerationType
 import javax.persistence.Id
 import javax.persistence.ManyToOne
 import javax.persistence.Column
+import javax.persistence.CascadeType
+import javax.persistence.JoinColumn
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 
@@ -13,20 +15,21 @@ import java.time.LocalDateTime
 
 @Entity
 data class MonitoringResult(
-	@JsonIgnore
-	@Id @GeneratedValue(strategy=GenerationType.IDENTITY)
-	val id: Int,
-
-	@Column(columnDefinition = "timestamp NOT NULL")
-	val check_time: LocalDateTime,
-
 	@Column(columnDefinition = "int NOT NULL")
 	val statusCode: Int,
 
 	@Column(columnDefinition = "text NOT NULL")
 	val payload: String,
 
-	@ManyToOne(optional=false)
+	@Column(columnDefinition = "timestamp NOT NULL")
+	val check_time: LocalDateTime = LocalDateTime.now(),
+
 	@JsonIgnore
-	val endpoint: MonitoredEndpoint
+	@ManyToOne(optional = false, cascade = [CascadeType.ALL])
+	@JoinColumn(name = "endpoint_id")
+	val endpoint: MonitoredEndpoint,
+
+	@JsonIgnore
+	@Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+	val id: Int = 0
 )
