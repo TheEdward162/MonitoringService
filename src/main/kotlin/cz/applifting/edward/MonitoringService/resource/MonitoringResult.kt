@@ -18,8 +18,8 @@ data class MonitoringResult(
 	@Column(columnDefinition = "int NOT NULL")
 	val statusCode: Int,
 
-	@Column(columnDefinition = "text NOT NULL")
-	val payload: String,
+	@Column(columnDefinition = "text")
+	val payload: String?,
 
 	@JsonIgnore
 	@ManyToOne(optional = false)

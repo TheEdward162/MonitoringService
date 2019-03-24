@@ -33,8 +33,8 @@ data class MonitoredEndpoint(
 	@Column(columnDefinition = "text NOT NULL")
 	val url: String,
 
-	@Column(columnDefinition = "int NOT NULL")
-	val monitoredInterval: Int,
+	@Column(nullable=false)
+	val monitoredInterval: Long,
 	
 	@JsonIgnore
 	@ManyToOne(optional = false)
