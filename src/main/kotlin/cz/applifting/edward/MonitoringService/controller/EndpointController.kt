@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
+import org.springframework.transaction.annotation.Transactional
+
 import org.springframework.beans.factory.annotation.Autowired
 
 import java.time.LocalDateTime
@@ -62,12 +64,11 @@ class EndpointController(
 		return endpoint
 	}
 
+	@Transactional
 	@RequestMapping("/{name}", method=[RequestMethod.DELETE])
 	fun deleteEndpoint(@RequestHeader("Authorization") authHeaderValue: String?, @PathVariable name: String): Status {
 		val user = this.getUserByToken(authHeaderValue)
-		val was_deleted = this.endpointRepository.deleteEndpointByNameAndUser(name, user)
-		if (!was_deleted)
-			throw EndpointNotFoundException()
+		this.endpointRepository.deleteEndpointByNameAndUser(name, user)
 		
 		return Status(200, "OK")
 	}
