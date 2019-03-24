@@ -49,13 +49,17 @@ class EndpointController(
 	}
 
 	@RequestMapping("", method=[RequestMethod.GET])
-	fun listEndpoints(@RequestHeader("Authorization") authHeaderValue: String?): List<MonitoredEndpoint> {
+	fun listEndpoints(
+		@RequestHeader("Authorization") authHeaderValue: String?
+	): List<MonitoredEndpoint> {
 		val user = this.getUserByToken(authHeaderValue)
 		return this.endpointRepository.findByUser(user).toList()
 	}
 
 	@RequestMapping("/{name}", method=[RequestMethod.GET])
-	fun getEndpoint(@RequestHeader("Authorization") authHeaderValue: String?, @PathVariable name: String): MonitoredEndpoint? {
+	fun getEndpoint(
+		@RequestHeader("Authorization") authHeaderValue: String?, @PathVariable name: String
+	): MonitoredEndpoint? {
 		val user = this.getUserByToken(authHeaderValue)
 		val endpoint = this.endpointRepository.findEndpointByNameAndUser(name, user)
 		if (endpoint == null)
@@ -65,11 +69,44 @@ class EndpointController(
 	}
 
 	@Transactional
+	@RequestMapping("/{name}", method=[RequestMethod.POST])
+	fun updateEndpoint(
+		@RequestHeader("Authorization") authHeaderValue: String?, @PathVariable name: String,
+		@RequestParam("url") url: String?, @RequestParam("interval") interval: Int? 
+	): Status {
+		val user = this.getUserByToken(authHeaderValue)
+		val endpoint = this.endpointRepository.findEndpointByNameAndUser(name, user)
+
+		if (endpoint == null && (url == null || interval == null))
+			throw InvalidParamsException()
+		if (endpoint != null && (url == null && interval == null))
+			throw InvalidParamsException()
+		
+		if (endpoint == null) {
+			this.endpointRepository.save(MonitoredEndpoint(
+				name,
+				url!!, // already checked above
+				interval!!, // already checked above
+				user
+			))
+		} else {
+			this.endpointRepository.save(endpoint.copy(
+				url = url ?: endpoint.url,
+				monitoredInterval = interval ?: endpoint.monitoredInterval
+			))
+		}
+
+		return Status.OK
+	}
+
+	@Transactional
 	@RequestMapping("/{name}", method=[RequestMethod.DELETE])
-	fun deleteEndpoint(@RequestHeader("Authorization") authHeaderValue: String?, @PathVariable name: String): Status {
+	fun deleteEndpoint(
+		@RequestHeader("Authorization") authHeaderValue: String?, @PathVariable name: String
+	): Status {
 		val user = this.getUserByToken(authHeaderValue)
 		this.endpointRepository.deleteEndpointByNameAndUser(name, user)
 		
-		return Status(200, "OK")
+		return Status.OK
 	}
 }

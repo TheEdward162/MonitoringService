@@ -35,11 +35,15 @@ class IntegrationTests(
 ) {
 	private val user = User("test", "test@test.com", "123")
 	private val endpoint = MonitoredEndpoint("test", "test.url.com", 30, this.user)
+	private val updateEndpoint = MonitoredEndpoint("toupdate", "update.url.com", 10, this.user)
+	private val deleteEndpoint = MonitoredEndpoint("todelete", "todelete.url.com", 500, this.user)
 	
 	@BeforeAll
 	fun setup() {
 		this.userRepository.save(this.user)
 		this.endpointRepository.save(this.endpoint)
+		this.endpointRepository.save(this.updateEndpoint)
+		this.endpointRepository.save(this.deleteEndpoint)
 	}
 
 	@Test
@@ -50,12 +54,15 @@ class IntegrationTests(
 	fun `GET endpoint returns Error(401, "Unauthorized")`() {
 		val entity = restTemplate.getForEntity<Status>("/endpoint")
 		assertThat(entity.statusCode).isEqualTo(HttpStatus.UNAUTHORIZED)
-		assertThat(entity.body).isEqualTo(Status(401, "Unauthorized"))
+		assertThat(entity.body).isEqualTo(Status.Unauthorized)
 	}
 
 	@Test
 	fun `Authorized GET endpoint returns list of endpoints`() {
-		val request = RequestEntity.get(URI("/endpoint")).header("Authorization", "Bearer " + this.user.accessToken).build()
+		val request = RequestEntity
+			.get(URI("/endpoint"))
+			.header("Authorization", "Bearer " + this.user.accessToken)
+		.build()
 		val response = this.restTemplate.exchange(request, JsonNode::class.java)
 
 		assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
@@ -70,8 +77,11 @@ class IntegrationTests(
 	}
 
 	@Test
-	fun `Authorized GET enpoint test returns one endpoint`() {
-		val request = RequestEntity.get(URI("/endpoint/test")).header("Authorization", "Bearer " + this.user.accessToken).build()
+	fun `Authorized GET endpoint test returns one endpoint`() {
+		val request = RequestEntity
+			.get(URI("/endpoint/test"))
+			.header("Authorization", "Bearer " + this.user.accessToken)
+		.build()
 		val response = this.restTemplate.exchange(request, JsonNode::class.java)
 
 		assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
@@ -82,35 +92,53 @@ class IntegrationTests(
 		assertThat(node.get("monitoredInterval").asInt()).isEqualTo(this.endpoint.monitoredInterval)
 	}
 
-	// @Test
-	// fun `Authorized POST enpoint test adds endpoint`() {
-	// 	val request = RequestEntity.get(URI("/endpoint")).header("Authorization", "Bearer " + this.user.accessToken).build()
-	// 	val response = this.restTemplate.exchange(request, MonitoredEndpoint::class.java)
-
-	// 	assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
-	// 	assertThat(response.body).isEqualTo(this.endpoint)
-	// }
-
-	// @Test
-	// fun `Authorized POST enpoint test updates endpoint`() {
-	// 	val request = RequestEntity.get(URI("/endpoint")).header("Authorization", "Bearer " + this.user.accessToken).build()
-	// 	val response = this.restTemplate.exchange(request, MonitoredEndpoint::class.java)
-
-	// 	assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
-	// 	assertThat(response.body).isEqualTo(this.endpoint)
-	// }
-
 	@Test
-	fun `Authorized DELETE endpoint test deletes endpoint`() {
-		val request = RequestEntity.delete(URI("/endpoint/test")).header("Authorization", "Bearer " + this.user.accessToken).build()
+	fun `Authorized POST endpoint test adds endpoint`() {
+		val request = RequestEntity
+			.post(URI("/endpoint/testadd"))
+			.header("Authorization", "Bearer " + this.user.accessToken)
+			.header("Content-Type", "application/x-www-form-urlencoded")
+		.body("url=add.url.com&interval=20")
+
 		val response = this.restTemplate.exchange(request, Status::class.java)
 
 		assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
-		assertThat(response.body).isEqualTo(Status(200, "OK"))
-		// assertThat(this.endpointRepository.findEndpointByNameAndUser("test", this.user)).isNull()
+		assertThat(response.body).isEqualTo(Status.OK)
 
-		// @Order annotation from JUnit5.4 doesn't work
-		this.endpointRepository.save(this.endpoint)
+		val testadd = this.endpointRepository.findEndpointByNameAndUser("testadd", this.user)!!
+		assertThat(testadd.url).isEqualTo("add.url.com")
+		assertThat(testadd.monitoredInterval).isEqualTo(20)
+	}
+
+	@Test
+	fun `Authorized POST endpoint test updates endpoint`() {
+		val request = RequestEntity
+			.post(URI("/endpoint/toupdate"))
+			.header("Authorization", "Bearer " + this.user.accessToken)
+			.header("Content-Type", "application/x-www-form-urlencoded")
+		.body("url=veryupdate.url.com")
+
+		val response = this.restTemplate.exchange(request, Status::class.java)
+
+		assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
+		assertThat(response.body).isEqualTo(Status.OK)
+
+		val testadd = this.endpointRepository.findEndpointByNameAndUser("toupdate", this.user)!!
+		assertThat(testadd.url).isEqualTo("veryupdate.url.com")
+		assertThat(testadd.monitoredInterval).isEqualTo(this.updateEndpoint.monitoredInterval)
+	}
+
+	@Test
+	fun `Authorized DELETE endpoint test deletes endpoint`() {
+		val request = RequestEntity
+			.delete(URI("/endpoint/todelete"))
+			.header("Authorization", "Bearer " + this.user.accessToken)
+		.build()
+		val response = this.restTemplate.exchange(request, Status::class.java)
+
+		assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
+		assertThat(response.body).isEqualTo(Status.OK)
+		assertThat(this.endpointRepository.findEndpointByNameAndUser("todelete", this.user)).isNull()
 	}
 
 	@AfterAll
