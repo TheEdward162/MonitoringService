@@ -5,4 +5,4 @@ INSERT INTO user(user_name, email, access_token) VALUES
 ;
 
 INSERT INTO monitored_endpoint(monitored_interval, name, url, user_id) SELECT
-30, "testpoint", "testpoint.com", user.id FROM user WHERE user_name = 'zerotest';
+30, "testpoint", "http://example.com", user.id FROM user WHERE user_name = 'zerotest';
