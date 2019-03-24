@@ -21,13 +21,13 @@ data class MonitoringResult(
 	@Column(columnDefinition = "text NOT NULL")
 	val payload: String,
 
-	@Column(columnDefinition = "timestamp NOT NULL")
-	val check_time: LocalDateTime = LocalDateTime.now(),
-
 	@JsonIgnore
-	@ManyToOne(optional = false, cascade = [CascadeType.ALL])
+	@ManyToOne(optional = false)
 	@JoinColumn(name = "endpoint_id")
 	val endpoint: MonitoredEndpoint,
+
+	@Column(columnDefinition = "timestamp NOT NULL")
+	val checkTime: LocalDateTime = LocalDateTime.now(),
 
 	@JsonIgnore
 	@Id @GeneratedValue(strategy = GenerationType.IDENTITY)

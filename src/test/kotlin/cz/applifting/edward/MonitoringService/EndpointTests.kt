@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.web.client.TestRestTemplate
 import org.springframework.boot.test.web.client.getForEntity
+import org.springframework.boot.test.context.SpringBootTest
 
 import org.springframework.http.HttpStatus
 import org.springframework.http.HttpHeaders
@@ -24,11 +25,9 @@ import org.junit.jupiter.api.TestInstance.Lifecycle
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.AfterAll
 
-import org.springframework.boot.test.context.SpringBootTest
-
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestInstance(Lifecycle.PER_CLASS)
-class IntegrationTests(
+class EndpointTests(
 	@Autowired private val restTemplate: TestRestTemplate,
 	@Autowired private val userRepository: UserRepository,
 	@Autowired private val endpointRepository: EndpointRepository
@@ -47,14 +46,14 @@ class IntegrationTests(
 	}
 
 	@Test
-	fun `Context loads successfully`() {
-	}
-
-	@Test
 	fun `GET endpoint returns Error(401, "Unauthorized")`() {
-		val entity = restTemplate.getForEntity<Status>("/endpoint")
-		assertThat(entity.statusCode).isEqualTo(HttpStatus.UNAUTHORIZED)
-		assertThat(entity.body).isEqualTo(Status.Unauthorized)
+		val request = RequestEntity
+			.get(URI("/endpoint"))
+		.build()
+		val response = this.restTemplate.exchange(request, Status::class.java)
+
+		assertThat(response.statusCode).isEqualTo(HttpStatus.UNAUTHORIZED)
+		assertThat(response.body).isEqualTo(Status.Unauthorized)
 	}
 
 	@Test
@@ -69,11 +68,13 @@ class IntegrationTests(
 		
 		val body = response.body!!
 		assertThat(body.isArray()).isTrue()
-		
-		val node = body[0]
-		assertThat(node.get("name").asText()).isEqualTo(this.endpoint.name)
-		assertThat(node.get("url").asText()).isEqualTo(this.endpoint.url)
-		assertThat(node.get("monitoredInterval").asInt()).isEqualTo(this.endpoint.monitoredInterval)
+		assertThat(body).anyMatch({ node ->
+			node.get("name").asText().equals(this.endpoint.name)
+			&&
+			node.get("url").asText().equals(this.endpoint.url)
+			&&
+			node.get("monitoredInterval").asText().equals(this.endpoint.monitoredInterval)
+		})
 	}
 
 	@Test
