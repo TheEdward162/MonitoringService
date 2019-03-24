@@ -15,26 +15,22 @@ import javax.servlet.http.HttpServletResponse
 @RestController
 public class CustomErrorController: ErrorController {
     @RequestMapping("/error")
-    fun error(_request: HttpServletRequest, response: HttpServletResponse): Status {
+    fun error(response: HttpServletResponse): Status {
 		val status = response.getStatus()
-
-		val message: String
 		when (status) {
 			// "/error" mapping exists but we don't want to return status code 200 for it
 			200 -> {
 				response.setStatus(404)
-				return Status(404, "Not Found")
+				return Status.NotFound
 			}
-			400 -> message = "Bad Request"
+			400 -> return Status.BadRequest
 			401 -> {
 				response.setHeader("WWW-Authenticate", "Bearer")
-				message = "Unauthorized"
+				return Status.Unauthorized
 			}
-			404 -> message = "Not Found"
-			else -> message = "Server Error"
+			404 -> return Status.NotFound
+			else -> return Status.ServerError
 		}
-		
-		return Status(status, message)
     }
 
     override fun getErrorPath(): String {
