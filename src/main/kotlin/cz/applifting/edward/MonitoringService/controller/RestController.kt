@@ -1,5 +1,8 @@
 package cz.applifting.edward.MonitoringService
 
+import java.net.URL
+import java.net.MalformedURLException
+
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.RequestHeader
@@ -23,7 +26,7 @@ class RestController(
 
 	@Autowired private val eventPublisher: ApplicationEventPublisher
 ) {
-	/// Extracts token from HTTP header value in format `Authorization: Bearer token`.
+	/// Extracts token from HTTP header value in format `Authorization: Bearer TOKEN`.
 	///
 	/// Throws `UnauthorizedException` if `authHeaderValue` doesn't have the required format or is null.
 	///
@@ -43,6 +46,9 @@ class RestController(
 		return splitValue[1]
 	}
 
+	/// Extracts token from header, attempts to find the owner of the token.
+	///
+	/// Throws `NoSuchUserException` if no user is found.
 	private fun getUserByToken(authHeaderValue: String?): User {
 		val userToken = this.extractToken(authHeaderValue);
 		val user = this.userRepository.findByAccessToken(userToken);
@@ -85,7 +91,15 @@ class RestController(
 			throw InvalidParamsException()
 		if (endpoint != null && (url == null && (interval == null || interval < 1)))
 			throw InvalidParamsException()
-		
+		// validate url format
+		if (url != null) {
+			try {
+				URL(url)
+			} catch (e: MalformedURLException) {
+				throw InvalidParamsException()
+			}
+		}
+
 		if (endpoint == null) {
 			val newEndpoint = this.endpointRepository.save(MonitoredEndpoint(
 				name,

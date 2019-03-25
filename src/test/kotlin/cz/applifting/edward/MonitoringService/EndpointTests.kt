@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.web.client.TestRestTemplate
 import org.springframework.boot.test.web.client.getForEntity
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.web.client.ResourceAccessException
 
 import org.springframework.http.HttpStatus
 import org.springframework.http.HttpHeaders
@@ -33,9 +34,9 @@ class EndpointTests(
 	@Autowired private val endpointRepository: EndpointRepository
 ) {
 	private val user = User("test", "test@test.com", "123")
-	private val endpoint = MonitoredEndpoint("test", "test.url.com", 30, this.user)
-	private val updateEndpoint = MonitoredEndpoint("toupdate", "update.url.com", 10, this.user)
-	private val deleteEndpoint = MonitoredEndpoint("todelete", "todelete.url.com", 500, this.user)
+	private val endpoint = MonitoredEndpoint("test", "http://test.url.com", 30, this.user)
+	private val updateEndpoint = MonitoredEndpoint("toupdate", "http://update.url.com", 10, this.user)
+	private val deleteEndpoint = MonitoredEndpoint("todelete", "http://todelete.url.com", 500, this.user)
 	
 	@BeforeAll
 	fun setup() {
@@ -54,6 +55,36 @@ class EndpointTests(
 
 		assertThat(response.statusCode).isEqualTo(HttpStatus.UNAUTHORIZED)
 		assertThat(response.body).isEqualTo(Status.Unauthorized)
+	}
+
+	@Test
+	fun `POST endpoint name returns Error(401, "Unauthorized")`() {
+		val request = RequestEntity
+			.post(URI("/endpoint/test"))
+			.header("Content-Type", "application/x-www-form-urlencoded")
+		.body("url=unauth.url.com&interval=5000")
+		try {
+			val response = this.restTemplate.exchange(request, Status::class.java)
+		} catch (e: ResourceAccessException) {
+			return
+		}
+
+		// assertThat(response.statusCode).isEqualTo(HttpStatus.UNAUTHORIZED)
+		// assertThat(response.body).isEqualTo(Status.Unauthorized)
+
+		// assertThat(this.endpointRepository.findEndpointByNameAndUser(this.endpoint.name, this.user)!!.url).isNotEqualTo("unauth.url.com")
+	}
+
+	@Test
+	fun `DELETE endpoint name returns Error(401, "Unauthorized")`() {
+		val request = RequestEntity
+			.delete(URI("/endpoint/" + this.endpoint.name))
+		.build()
+		val response = this.restTemplate.exchange(request, Status::class.java)
+
+		assertThat(response.statusCode).isEqualTo(HttpStatus.UNAUTHORIZED)
+		assertThat(response.body).isEqualTo(Status.Unauthorized)
+		assertThat(this.endpointRepository.findEndpointByNameAndUser(this.endpoint.name, this.user)).isNotNull()
 	}
 
 	@Test
@@ -99,7 +130,7 @@ class EndpointTests(
 			.post(URI("/endpoint/testadd"))
 			.header("Authorization", "Bearer " + this.user.accessToken)
 			.header("Content-Type", "application/x-www-form-urlencoded")
-		.body("url=add.url.com&interval=20")
+		.body("url=http://add.url.com&interval=20")
 
 		val response = this.restTemplate.exchange(request, Status::class.java)
 
@@ -107,7 +138,7 @@ class EndpointTests(
 		assertThat(response.body).isEqualTo(Status.OK)
 
 		val testadd = this.endpointRepository.findEndpointByNameAndUser("testadd", this.user)!!
-		assertThat(testadd.url).isEqualTo("add.url.com")
+		assertThat(testadd.url).isEqualTo("http://add.url.com")
 		assertThat(testadd.monitoredInterval).isEqualTo(20)
 	}
 
@@ -117,7 +148,7 @@ class EndpointTests(
 			.post(URI("/endpoint/toupdate"))
 			.header("Authorization", "Bearer " + this.user.accessToken)
 			.header("Content-Type", "application/x-www-form-urlencoded")
-		.body("url=veryupdate.url.com")
+		.body("url=http://veryupdate.url.com")
 
 		val response = this.restTemplate.exchange(request, Status::class.java)
 
@@ -125,7 +156,7 @@ class EndpointTests(
 		assertThat(response.body).isEqualTo(Status.OK)
 
 		val testadd = this.endpointRepository.findEndpointByNameAndUser("toupdate", this.user)!!
-		assertThat(testadd.url).isEqualTo("veryupdate.url.com")
+		assertThat(testadd.url).isEqualTo("http://veryupdate.url.com")
 		assertThat(testadd.monitoredInterval).isEqualTo(this.updateEndpoint.monitoredInterval)
 	}
 
