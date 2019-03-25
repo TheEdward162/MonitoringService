@@ -14,6 +14,10 @@ class WatchTask(
 	private val endpointRepository: EndpointRepository,
 	private val resultRepository: ResultRepository
 ) : Runnable {
+	/// Opens a GET connection to the endpoint URL, reads in the response, stores in database.
+	/// On failure, stores -1 and null in the database.
+	///
+	/// Limits database entries to last 10 for given endpoint.
 	override fun run() {
 		val rightNow = LocalDateTime.now()
 
@@ -39,8 +43,6 @@ class WatchTask(
 			statusCode = -1
 			payload = null
 		}
-
-		println("Pinged " + endpoint.url + " with response status code " + statusCode)
 
 		this.endpointRepository.saveLastCheckById(rightNow, endpoint.id)
 

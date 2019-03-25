@@ -22,8 +22,8 @@ class WatchComponent(
 ) {
 	private val tasks: MutableMap<Int, ScheduledFuture<*>> = mutableMapOf()
 
+	/// Starts a task and saves it into the hashmap.
 	private fun startTask(endpoint: MonitoredEndpoint) {
-		println("Registering endpoint " + endpoint.url + " at interval " + endpoint.monitoredInterval)
 		val future = scheduler.schedule(
 			WatchTask(endpoint, this.endpointRepository, this.resultRepository),
 			PeriodicTrigger(endpoint.monitoredInterval * 1000)
@@ -32,18 +32,22 @@ class WatchComponent(
 	}
 
 	@EventListener
+	/// Starts all tasks on context start (application start).
     fun handleContextStart(event: ContextStartedEvent) {
 		this.endpointRepository.findAll().forEach({
-			endpoint ->
-			this.startTask(endpoint)
+			endpoint -> this.startTask(endpoint)
 		})
     }
 
 	@TransactionalEventListener
+	/// Starts and stops tasks according to endpoint changes.
 	fun handleEndpointTransaction(event: EndpointChangedEvent) {
 		val endpoint = this.endpointRepository.findEndpointById(event.endpoint_id)
 
-		val task = this.tasks.get(event.endpoint_id)
+		// remove task from hashmap
+		// if the task exists, we cancel it
+		// if endpoint still exists, we start a new task with new params
+		val task = this.tasks.remove(event.endpoint_id)
 		if (task != null) {
 			task.cancel(true)
 		}
