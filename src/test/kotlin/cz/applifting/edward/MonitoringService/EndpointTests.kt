@@ -63,16 +63,14 @@ class EndpointTests(
 			.post(URI("/endpoint/test"))
 			.header("Content-Type", "application/x-www-form-urlencoded")
 		.body("url=unauth.url.com&interval=5000")
+
 		try {
-			val response = this.restTemplate.exchange(request, Status::class.java)
-		} catch (e: ResourceAccessException) {
+			this.restTemplate.exchange(request, Status::class.java)
+		} catch(e: ResourceAccessException) {
+			assertThat(this.endpointRepository.findEndpointByNameAndUser(this.endpoint.name, this.user)!!.url).isNotEqualTo("unauth.url.com")
 			return
 		}
 
-		// assertThat(response.statusCode).isEqualTo(HttpStatus.UNAUTHORIZED)
-		// assertThat(response.body).isEqualTo(Status.Unauthorized)
-
-		// assertThat(this.endpointRepository.findEndpointByNameAndUser(this.endpoint.name, this.user)!!.url).isNotEqualTo("unauth.url.com")
 	}
 
 	@Test
@@ -143,6 +141,23 @@ class EndpointTests(
 	}
 
 	@Test
+	fun `Authorized POST endpoint rejects incomplete add request`() {
+		val request = RequestEntity
+			.post(URI("/endpoint/testaddfail"))
+			.header("Authorization", "Bearer " + this.user.accessToken)
+			.header("Content-Type", "application/x-www-form-urlencoded")
+		.body("interval=20")
+
+		val response = this.restTemplate.exchange(request, Status::class.java)
+
+		assertThat(response.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+		assertThat(response.body).isEqualTo(Status.BadRequest)
+
+		val testadd = this.endpointRepository.findEndpointByNameAndUser("testaddfail", this.user)
+		assertThat(testadd).isNull()
+	}
+
+	@Test
 	fun `Authorized POST endpoint test updates endpoint`() {
 		val request = RequestEntity
 			.post(URI("/endpoint/toupdate"))
@@ -158,6 +173,40 @@ class EndpointTests(
 		val testadd = this.endpointRepository.findEndpointByNameAndUser("toupdate", this.user)!!
 		assertThat(testadd.url).isEqualTo("http://veryupdate.url.com")
 		assertThat(testadd.monitoredInterval).isEqualTo(this.updateEndpoint.monitoredInterval)
+	}
+
+	@Test
+	fun `Authorized POST endpoint test rejects invalid url`() {
+		val request = RequestEntity
+			.post(URI("/endpoint/toupdate"))
+			.header("Authorization", "Bearer " + this.user.accessToken)
+			.header("Content-Type", "application/x-www-form-urlencoded")
+		.body("url=veryupdate.url.com")
+
+		val response = this.restTemplate.exchange(request, Status::class.java)
+
+		assertThat(response.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+		assertThat(response.body).isEqualTo(Status.BadRequest)
+
+		val testadd = this.endpointRepository.findEndpointByNameAndUser("toupdate", this.user)!!
+		assertThat(testadd.url).isNotEqualTo("veryupdate.url.com")
+	}
+
+	@Test
+	fun `Authorized POST endpoint test rejects invalid interval`() {
+		val request = RequestEntity
+			.post(URI("/endpoint/toupdate"))
+			.header("Authorization", "Bearer " + this.user.accessToken)
+			.header("Content-Type", "application/x-www-form-urlencoded")
+		.body("interval=0")
+
+		val response = this.restTemplate.exchange(request, Status::class.java)
+
+		assertThat(response.statusCode).isEqualTo(HttpStatus.BAD_REQUEST)
+		assertThat(response.body).isEqualTo(Status.BadRequest)
+
+		val testadd = this.endpointRepository.findEndpointByNameAndUser("toupdate", this.user)!!
+		assertThat(testadd.monitoredInterval).isNotEqualTo(0)
 	}
 
 	@Test
