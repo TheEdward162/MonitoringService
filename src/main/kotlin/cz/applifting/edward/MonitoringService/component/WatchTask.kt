@@ -21,7 +21,7 @@ class WatchTask(
 	override fun run() {
 		val rightNow = LocalDateTime.now()
 
-		var statusCode: Int
+		var statusCode: Int?
 		var payload: StringBuffer?
 		try {
 			val url = URL(endpoint.url)
@@ -40,7 +40,7 @@ class WatchTask(
 			}
 			reader.close()
 		} catch (e: IOException) {
-			statusCode = -1
+			statusCode = null
 			payload = null
 		}
 

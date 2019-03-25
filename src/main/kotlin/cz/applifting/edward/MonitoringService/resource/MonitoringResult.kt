@@ -15,8 +15,7 @@ import java.time.LocalDateTime
 
 @Entity
 data class MonitoringResult(
-	@Column(columnDefinition = "int NOT NULL")
-	val statusCode: Int,
+	val statusCode: Int?,
 
 	@Column(columnDefinition = "text")
 	val payload: String?,

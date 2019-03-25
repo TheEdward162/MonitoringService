@@ -41,14 +41,13 @@ data class MonitoredEndpoint(
 	@JoinColumn(name = "user_id")
 	val user: User,
 
-
 	@Column(columnDefinition = "timestamp NOT NULL")
 	val creation: LocalDateTime = LocalDateTime.now(),
 
 	val lastCheck: LocalDateTime? = null,
 
 	@JsonIgnore
-	@OneToMany(mappedBy = "endpoint", fetch = FetchType.LAZY,  cascade = [CascadeType.ALL])
+	@OneToMany(mappedBy = "endpoint", fetch = FetchType.LAZY, cascade = [CascadeType.ALL])
 	@OnDelete(action = OnDeleteAction.CASCADE)
 	val results: List<MonitoringResult> = listOf(),
 
